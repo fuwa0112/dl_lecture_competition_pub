@@ -9,7 +9,7 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
     def __init__(self, split: str, data_dir: str = "data") -> None:
         super().__init__()
         
-        assert split in ["val", "test","train"], f"Invalid split: {split}"
+        assert split in ["train", "val", "test"], f"Invalid split: {split}"
         self.split = split
         self.num_classes = 1854
 

@@ -27,10 +27,6 @@ def run(args: DictConfig):
     loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
     print("Debug start")
     
-    train_set = ThingsMEGDataset("train", args.data_dir)
-    train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
-    print("Train load complete")
-    
     val_set = ThingsMEGDataset("val", args.data_dir)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
     print("val load complete")
@@ -40,6 +36,10 @@ def run(args: DictConfig):
         test_set,shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
     print("test load complete")
+
+    train_set = ThingsMEGDataset("train", args.data_dir)
+    train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
+    print("Train load complete")
 
     # ------------------
     #       Model
