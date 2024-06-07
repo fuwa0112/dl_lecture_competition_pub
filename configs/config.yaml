@@ -1,10 +1,9 @@
-batch_size: 2
-epochs: 1
-lr: 0.01
+batch_size: 128
+epochs: 80
+lr: 0.001
 
-device: cpu
-#cuda:0
-num_workers: 1
+device: cuda:0
+num_workers: 4
 seed: 1234
 use_wandb: False
 
