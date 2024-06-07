@@ -16,7 +16,7 @@ from src.utils import set_seed
 
 @hydra.main(version_base=None, config_path="configs", config_name="config_light")
 def run(args: DictConfig):
-    print()
+    print("Debug1")
     set_seed(args.seed)
     logdir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
     
@@ -31,12 +31,20 @@ def run(args: DictConfig):
     print("Debug3")
     train_set = ThingsMEGDataset("train", args.data_dir)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
+    print("Train load complete")
+    
     val_set = ThingsMEGDataset("val", args.data_dir)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
+    
+    print("val load complete")
     test_set = ThingsMEGDataset("test", args.data_dir)
+    
+    
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
+    
+    print("test load complete")
 
     # ------------------
     #       Model
