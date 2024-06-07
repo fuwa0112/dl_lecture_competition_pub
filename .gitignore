@@ -1,5 +1,7 @@
 data/*
 !data/.gitkeep
+images/*
+!images/.gitkeep
 
 outputs/
 preprocess.py
