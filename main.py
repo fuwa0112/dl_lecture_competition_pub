@@ -9,8 +9,10 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 
-from src.datasets import ThingsMEGDataset
+from src.datasets2 import ThingsMEGDataset
 from src.models import BasicConvClassifier
+from src.models2_layer_increase import BasicConvClassifier2
+from src.models3_LSTM import BasicConvClassifier3
 from src.utils import set_seed
 
 

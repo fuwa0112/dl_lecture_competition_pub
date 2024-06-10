@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 
-class ConvClassifier2(nn.Module):
+class BasicConvClassifier2(nn.Module):
     def __init__(
         self,
         num_classes: int,
@@ -66,4 +66,4 @@ class ConvBlock(nn.Module):
         return self.dropout(X)
 
 # Usage example
-model = ConvClassifier2(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_blocks=6, kernel_size=5)
+model = BasicConvClassifier2(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_blocks=6, kernel_size=5)
