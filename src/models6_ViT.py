@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
 
-class BasicConvClassifier5(nn.Module):
+class BasicConvClassifier6(nn.Module):
     def __init__(
         self,
         num_classes: int,
@@ -50,4 +50,4 @@ class BasicConvClassifier5(nn.Module):
         return self.head(X)
 
 # Usage example
-model = BasicConvClassifier5(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_heads=8, num_layers=6)
+model = BasicConvClassifier6(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_heads=8, num_layers=6)
