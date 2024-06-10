@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from typing import Tuple
 from termcolor import cprint
+import scipy.signal as signal
+from sklearn.preprocessing import StandardScaler
 
 def preprocess_data(data, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window):
     # リサンプリング
@@ -32,7 +34,7 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         self.data_dir = data_dir
         self.cache_dir = os.path.join(data_dir, 'cache')  # ここでcache_dirを定義
 
-        cache_file = os.path.join(cache_dir, f"{split}_X_cache.pt")
+        cache_file = os.path.join(self.cache_dir, f"{split}_X_cache.pt")
         if os.path.exists(cache_file):
             print(f"Loading {split} data from cache...")
             self.X = torch.load(cache_file)
@@ -53,8 +55,8 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
                 print(f"{split}_y.pt loaded successfully.")
             
             # 前処理
-            #sample_rate = 1200  # 元のサンプリングレート（仮定）
-            #self.X = np.array([preprocess_data(x, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window) for x in self.X])
+            # sample_rate = 1200  # 元のサンプリングレート（仮定）
+            # self.X = np.array([preprocess_data(x, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window) for x in self.X])
             
             # スケーリング
             scaler = StandardScaler()

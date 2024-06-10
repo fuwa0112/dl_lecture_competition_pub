@@ -3,7 +3,6 @@ import numpy as np
 import torch
 from typing import Tuple
 from termcolor import cprint
-import numpy as np
 import scipy.signal as signal
 from sklearn.preprocessing import StandardScaler
 
@@ -35,7 +34,7 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         self.data_dir = data_dir
         self.cache_dir = os.path.join(data_dir, 'cache')  # ここでcache_dirを定義
 
-        cache_file = os.path.join(cache_dir, f"{split}_X_cache.pt")
+        cache_file = os.path.join(self.cache_dir, f"{split}_X_cache.pt")
         if os.path.exists(cache_file):
             print(f"Loading {split} data from cache...")
             self.X = torch.load(cache_file)
@@ -74,7 +73,7 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         if hasattr(self, "y"):
-            return self.X[i], self.y[i], self.subject_idxs[i]
+            return self.X[i], self.subject_idxs[i], self.y[i]
         else:
             return self.X[i], self.subject_idxs[i]
 
