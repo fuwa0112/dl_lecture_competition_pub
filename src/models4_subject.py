@@ -12,7 +12,7 @@ class BasicConvClassifier4(nn.Module):
         hid_dim: int = 128,
         lstm_dim: int = 256,
         num_blocks: int = 4,
-        kernel_size: int = 3,
+        kernel_size: int = 5,
         num_subjects: int = 4,  # 被験者数を指定
         subject_emb_dim: int = 32  # 被験者の埋め込み次元を指定
     ) -> None:
@@ -83,4 +83,4 @@ class ConvBlock(nn.Module):
         return self.dropout(X)
 
 # Usage example
-model = BasicConvClassifier4(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, lstm_dim=512, num_blocks=6, kernel_size=3)
+model = BasicConvClassifier4(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, lstm_dim=512, num_blocks=6, kernel_size=5)
