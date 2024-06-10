@@ -14,7 +14,7 @@ from src.models import BasicConvClassifier
 from src.utils import set_seed
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="config_light")
+@hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(args: DictConfig):
     set_seed(args.seed)
     logdir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
@@ -44,7 +44,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier(
+    model = BasicConvClassifier2(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
 
