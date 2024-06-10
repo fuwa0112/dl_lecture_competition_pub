@@ -44,7 +44,7 @@ def run(args: DictConfig):
     )
     print("test load complete")
 
-for epoch in range(num_epochs):
+for epoch in range(args.epochs):
     model.train()
     for X, y, subject_idxs in train_loader:
         outputs = model(X, subject_idxs)
