@@ -9,10 +9,11 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 
-from src.datasets2 import ThingsMEGDataset
+from src.datasets4 import ThingsMEGDataset
 from src.models import BasicConvClassifier
 from src.models2_layer_increase import BasicConvClassifier2
 from src.models3_LSTM import BasicConvClassifier3
+from src.models4_subject import BasicConvClassifier4
 from src.utils import set_seed
 
 
@@ -28,25 +29,45 @@ def run(args: DictConfig):
     # ------------------
     loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
     print("Debug start")
-        
-    train_set = ThingsMEGDataset("train", args.data_dir)
+            
+    train_set = ThingsMEGDataset("train", args.data_dir, cache_dir="cache")
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
     print("Train load complete")
-    
-    val_set = ThingsMEGDataset("val", args.data_dir)
+
+    val_set = ThingsMEGDataset("val", args.data_dir, cache_dir="cache")
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
     print("val load complete")
 
-    test_set = ThingsMEGDataset("test", args.data_dir)
+    test_set = ThingsMEGDataset("test", args.data_dir, cache_dir="cache")
     test_loader = torch.utils.data.DataLoader(
-        test_set,shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
+        test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
     print("test load complete")
+
+for epoch in range(num_epochs):
+    model.train()
+    for X, y, subject_idxs in train_loader:
+        outputs = model(X, subject_idxs)
+        loss = criterion(outputs, y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    
+    model.eval()
+    val_loss = 0
+    with torch.no_grad():
+        for X, y, subject_idxs in val_loader:
+            outputs = model(X, subject_idxs)
+            loss = criterion(outputs, y)
+            val_loss += loss.item()
+    
+    print(f"Epoch {epoch+1}, Validation Loss: {val_loss / len(val_loader)}")
+
 
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier3(
+    model = BasicConvClassifier4(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
 
