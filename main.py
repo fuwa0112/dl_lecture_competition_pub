@@ -46,7 +46,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier2(
+    model = BasicConvClassifier3(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
 
