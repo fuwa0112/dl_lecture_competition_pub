@@ -12,7 +12,7 @@ def preprocess_data(data, sample_rate, new_sample_rate, low_cut, high_cut, basel
     data = signal.resample(data, num_samples)
     
     # フィルタリング
-    nyquist = 0.5 * new_sample_rate
+    nyquist = 1.0 * new_sample_rate
     low = low_cut / nyquist
     high = high_cut / nyquist
     b, a = signal.butter(1, [low, high], btype="band")
