@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from einops import repeat
 
-class BasicConvClassifier6(nn.Module):
+class BasicConvClassifier5(nn.Module):
     def __init__(
         self,
         num_classes: int,
@@ -28,11 +27,12 @@ class BasicConvClassifier6(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(transformer_layer, num_layers=num_layers)
         
         self.head = nn.Sequential(
-            nn.LayerNorm(hid_dim),
+            nn.LayerNorm(hid_dim + subject_emb_dim),
             nn.Linear(hid_dim + subject_emb_dim, num_classes),
         )
 
     def forward(self, X: torch.Tensor, subject_idxs: torch.Tensor) -> torch.Tensor:
+        X = X.transpose(1, 2)  # Change shape from (b, c, t) to (b, t, c)
         X = self.embedding(X)  # Shape: (b, t, hid_dim)
         b, t, _ = X.shape
         
@@ -44,10 +44,10 @@ class BasicConvClassifier6(nn.Module):
         
         X = X.mean(dim=1)  # Global average pooling
         
-        subject_emb = self.subject_embedding(subject_idxs)
-        X = torch.cat([X, subject_emb], dim=-1)
+        subject_emb = self.subject_embedding(subject_idxs)  # Shape: (b, subject_emb_dim)
+        X = torch.cat([X, subject_emb], dim=-1)  # Concatenate along the feature dimension
         
         return self.head(X)
 
 # Usage example
-model = BasicConvClassifier6(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_heads=8, num_layers=6)
+model = BasicConvClassifier5(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_heads=8, num_layers=6)
