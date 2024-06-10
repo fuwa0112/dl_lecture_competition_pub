@@ -55,8 +55,8 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
                 print(f"{split}_y.pt loaded successfully.")
         
         # 前処理
-        # sample_rate = 1200  # 元のサンプリングレート（仮定）
-        # self.X = np.array([preprocess_data(x, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window) for x in self.X])
+        sample_rate = 1200  # 元のサンプリングレート（仮定）
+        self.X = np.array([preprocess_data(x, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window) for x in self.X])
         
         # スケーリング
         scaler = StandardScaler()

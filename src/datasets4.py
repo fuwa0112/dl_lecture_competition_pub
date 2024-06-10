@@ -12,7 +12,7 @@ def preprocess_data(data, sample_rate, new_sample_rate, low_cut, high_cut, basel
     data = signal.resample(data, num_samples)
     
     # フィルタリング
-    nyquist = 0.5 * new_sample_rate
+    nyquist = 1.0 * new_sample_rate
     low = low_cut / nyquist
     high = high_cut / nyquist
     b, a = signal.butter(1, [low, high], btype="band")
@@ -55,8 +55,8 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
                 print(f"{split}_y.pt loaded successfully.")
             
             # 前処理
-            # sample_rate = 1200  # 元のサンプリングレート（仮定）
-            # self.X = np.array([preprocess_data(x, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window) for x in self.X])
+            sample_rate = 1200  # 元のサンプリングレート（仮定）
+            self.X = np.array([preprocess_data(x, sample_rate, new_sample_rate, low_cut, high_cut, baseline_window) for x in self.X])
             
             # スケーリング
             scaler = StandardScaler()
