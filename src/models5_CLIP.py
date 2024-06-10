@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
+from transformers import CLIPModel, CLIPProcessor
 
-class BasicConvClassifier4(nn.Module):
+class BasicConvClassifier5(nn.Module):
     def __init__(
         self,
         num_classes: int,
@@ -18,6 +19,10 @@ class BasicConvClassifier4(nn.Module):
     ) -> None:
         super().__init__()
 
+        # CLIPモデルのロード
+        self.clip_model = CLIPModel.from_pretrained("data/clip-vit-base-patch32")
+        self.clip_processor = CLIPProcessor.from_pretrained("data/clip-vit-base-patch32")
+        
         self.blocks = nn.Sequential(*[
             ConvBlock(in_channels if i == 0 else hid_dim, hid_dim, kernel_size=kernel_size)
             for i in range(num_blocks)
@@ -36,6 +41,9 @@ class BasicConvClassifier4(nn.Module):
         )
 
     def forward(self, X: torch.Tensor, subject_idxs: torch.Tensor) -> torch.Tensor:
+        # CLIPの画像エンコーダを使用して脳波データの特徴を抽出
+        X = self.clip_model.vision_model(pixel_values=X).last_hidden_state
+        
         X = self.blocks(X)
         X = X.transpose(1, 2)  # Change shape from (b, c, t) to (b, t, c) for LSTM
         X, _ = self.lstm(X)
@@ -83,4 +91,4 @@ class ConvBlock(nn.Module):
         return self.dropout(X)
 
 # Usage example
-model = BasicConvClassifier4(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, lstm_dim=512, num_blocks=6, kernel_size=5)
+model = BasicConvClassifier5(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, lstm_dim=512, num_blocks=6, kernel_size=5)
