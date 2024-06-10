@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -16,14 +17,14 @@ from src.models3_LSTM import BasicConvClassifier3
 from src.models4_subject import BasicConvClassifier4
 from src.utils import set_seed
 
-
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(args: DictConfig):
     set_seed(args.seed)
     logdir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
     
     if args.use_wandb:
-        wandb.init(mode="online", dir=logdir, project="MEG-classification")
+        wandb.init(mode="online", dir=logdir, project="MEG-classification", entity="your-entity")
+    
     # ------------------
     #    Dataloader
     # ------------------
@@ -39,30 +40,8 @@ def run(args: DictConfig):
     print("val load complete")
 
     test_set = ThingsMEGDataset("test", args.data_dir, cache_dir="cache")
-    test_loader = torch.utils.data.DataLoader(
-        test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
-    )
+    test_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
     print("test load complete")
-
-    for epoch in range(args.epochs):
-        model.train()
-        for X, y, subject_idxs in train_loader:
-            outputs = model(X, subject_idxs)
-            loss = criterion(outputs, y)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-    
-    model.eval()
-    val_loss = 0
-    with torch.no_grad():
-        for X, y, subject_idxs in val_loader:
-            outputs = model(X, subject_idxs)
-            loss = criterion(outputs, y)
-            val_loss += loss.item()
-    
-    print(f"Epoch {epoch+1}, Validation Loss: {val_loss / len(val_loader)}")
-
 
     # ------------------
     #       Model
@@ -75,6 +54,11 @@ def run(args: DictConfig):
     #     Optimizer
     # ------------------
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+
+    # ------------------
+    #     Criterion
+    # ------------------
+    criterion = torch.nn.CrossEntropyLoss()
 
     # ------------------
     #   Start training
@@ -93,9 +77,9 @@ def run(args: DictConfig):
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to(args.device), y.to(args.device)
 
-            y_pred = model(X)
+            y_pred = model(X, subject_idxs)
             
-            loss = F.cross_entropy(y_pred, y)
+            loss = criterion(y_pred, y)
             train_loss.append(loss.item())
             
             optimizer.zero_grad()
@@ -110,9 +94,9 @@ def run(args: DictConfig):
             X, y = X.to(args.device), y.to(args.device)
             
             with torch.no_grad():
-                y_pred = model(X)
+                y_pred = model(X, subject_idxs)
             
-            val_loss.append(F.cross_entropy(y_pred, y).item())
+            val_loss.append(criterion(y_pred, y).item())
             val_acc.append(accuracy(y_pred, y).item())
 
         print(f"Epoch {epoch+1}/{args.epochs} | train loss: {np.mean(train_loss):.3f} | train acc: {np.mean(train_acc):.3f} | val loss: {np.mean(val_loss):.3f} | val acc: {np.mean(val_acc):.3f}")
@@ -125,7 +109,6 @@ def run(args: DictConfig):
             torch.save(model.state_dict(), os.path.join(logdir, "model_best.pt"))
             max_val_acc = np.mean(val_acc)
             
-    
     # ----------------------------------
     #  Start evaluation with best model
     # ----------------------------------
@@ -134,12 +117,11 @@ def run(args: DictConfig):
     preds = [] 
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):
-        preds.append(model(X.to(args.device)).detach().cpu())
+        preds.append(model(X.to(args.device), subject_idxs.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(logdir, "submission"), preds)
     cprint(f"Submission {preds.shape} saved at {logdir}", "cyan")
-
 
 if __name__ == "__main__":
     run()
