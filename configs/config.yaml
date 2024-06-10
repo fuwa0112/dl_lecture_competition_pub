@@ -1,5 +1,5 @@
 batch_size: 256
-epochs: 10
+epochs: 30
 lr: 0.0005
 
 device: cuda:0
@@ -10,4 +10,5 @@ use_wandb: False
 data_dir: data
 
 # Evaluation
-model_path: outputs/model_best.pt
+model_path: 
+#model_path: outputs/model_best.pt
