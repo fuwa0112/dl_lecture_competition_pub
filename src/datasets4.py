@@ -29,6 +29,8 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         assert split in ["train", "val", "test"], f"Invalid split: {split}"
         self.split = split
         self.num_classes = 1854
+        self.data_dir = data_dir
+        self.cache_dir = os.path.join(data_dir, 'cache')  # ここでcache_dirを定義
 
         cache_file = os.path.join(cache_dir, f"{split}_X_cache.pt")
         if os.path.exists(cache_file):
