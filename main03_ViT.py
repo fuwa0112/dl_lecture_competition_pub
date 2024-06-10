@@ -14,7 +14,7 @@ from src.models import BasicConvClassifier
 from src.models2_layer_increase import BasicConvClassifier2
 from src.models3_LSTM import BasicConvClassifier3
 from src.models4_subject import BasicConvClassifier4
-from src.models5_CLIP import BasicConvClassifier5
+from src.models6_ViT import BasicConvClassifier6
 from src.utils import set_seed
 
 
@@ -48,7 +48,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier5(
+    model = BasicConvClassifier6(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
 
@@ -115,7 +115,7 @@ def run(args: DictConfig):
     preds = [] 
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-        preds.append(model(X.to(args.device)).detach().cpu())
+        preds.append(model(X.to(args.device), subject_idxs.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(logdir, "submission"), preds)
