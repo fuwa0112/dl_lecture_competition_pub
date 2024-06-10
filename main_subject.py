@@ -44,14 +44,14 @@ def run(args: DictConfig):
     )
     print("test load complete")
 
-for epoch in range(args.epochs):
-    model.train()
-    for X, y, subject_idxs in train_loader:
-        outputs = model(X, subject_idxs)
-        loss = criterion(outputs, y)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    for epoch in range(args.epochs):
+        model.train()
+        for X, y, subject_idxs in train_loader:
+            outputs = model(X, subject_idxs)
+            loss = criterion(outputs, y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
     
     model.eval()
     val_loss = 0
