@@ -31,28 +31,20 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         assert split in ["train", "val", "test"], f"Invalid split: {split}"
         self.split = split
         self.num_classes = 1854
-        self.data_dir = data_dir
-        self.cache_dir = os.path.join(data_dir, 'cache')  # ここでcache_dirを定義
 
-        cache_file = os.path.join(self.cache_dir, f"{split}_X_cache.pt")
-        if os.path.exists(cache_file):
-            print(f"Loading {split} data from cache...")
-            self.X = torch.load(cache_file)
-            print(f"{split} data loaded from cache successfully.")
-        else:
-            print(f"Loading {split}_X.pt...")
-            self.X = torch.load(os.path.join(data_dir, f"{split}_X.pt"))
-            print(f"{split}_X.pt loaded successfully.")
-            
-            print(f"Loading {split}_subject_idxs.pt...")
-            self.subject_idxs = torch.load(os.path.join(data_dir, f"{split}_subject_idxs.pt"))
-            print(f"{split}_subject_idxs.pt loaded successfully.")
-            
-            if split in ["train", "val"]:
-                print(f"Loading {split}_y.pt...")
-                self.y = torch.load(os.path.join(data_dir, f"{split}_y.pt"))
-                assert len(torch.unique(self.y)) == self.num_classes, "Number of classes do not match."
-                print(f"{split}_y.pt loaded successfully.")
+        print(f"Loading {split}_X.pt...")
+        self.X = torch.load(os.path.join(data_dir, f"{split}_X.pt"))
+        print(f"{split}_X.pt loaded successfully.")
+
+        print(f"Loading {split}_subject_idxs.pt...")
+        self.subject_idxs = torch.load(os.path.join(data_dir, f"{split}_subject_idxs.pt"))
+        print(f"{split}_subject_idxs.pt loaded successfully.")
+        
+        if split in ["train", "val"]:
+            print(f"Loading {split}_y.pt...")
+            self.y = torch.load(os.path.join(data_dir, f"{split}_y.pt"))
+            assert len(torch.unique(self.y)) == self.num_classes, "Number of classes do not match."
+            print(f"{split}_y.pt loaded successfully.")
             
             # 前処理
             sample_rate = 1200  # 元のサンプリングレート（仮定）
@@ -67,10 +59,6 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
             self.subject_idxs = torch.tensor(self.subject_idxs, dtype=torch.long)
             if hasattr(self, 'y'):
                 self.y = torch.tensor(self.y, dtype=torch.long)
-
-            # キャッシュ保存
-            torch.save(self.X, cache_file)
-            print(f"{split} data cached successfully.")
 
     def __len__(self) -> int:
         return len(self.X)
