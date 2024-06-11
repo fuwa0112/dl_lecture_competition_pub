@@ -3,13 +3,74 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 
+class BasicConvClassifier8(nn.Module):
+    def __init__(
+        self,
+        num_classes: int,
+        seq_len: int,
+        in_channels: int,
+        hid_dim: int = 128,
+        num_heads: int = 8,
+        num_layers: int = 4,  # トランスフォーマーレイヤ数
+        kernel_size: int = 5,
+        num_blocks: int = 4,
+        dropout: float = 0.1,
+        num_subjects: int = 4,  # 被験者数を指定
+        subject_emb_dim: int = 32  # 被験者の埋め込み次元を指定
+    ) -> None:
+        super().__init__()
+
+        self.blocks = nn.Sequential(*[
+            ConvBlock(in_channels if i == 0 else hid_dim, hid_dim, kernel_size=kernel_size)
+            for i in range(num_blocks)
+        ])
+
+        self.subject_embedding = nn.Embedding(num_subjects, subject_emb_dim)
+        
+        self.position_embedding = nn.Parameter(torch.randn(1, seq_len, hid_dim))
+        
+        transformer_layer = nn.TransformerEncoderLayer(
+            d_model=hid_dim, 
+            nhead=num_heads, 
+            dim_feedforward=hid_dim * 2, 
+            dropout=dropout
+        )
+        self.transformer_encoder = nn.TransformerEncoder(transformer_layer, num_layers=num_layers)
+        
+        self.batchnorm = nn.BatchNorm1d(hid_dim)
+
+        self.head = nn.Sequential(
+            nn.AdaptiveAvgPool1d(1),
+            Rearrange("b d 1 -> b d"),
+            nn.Linear(hid_dim + subject_emb_dim, num_classes),
+        )
+
+    def forward(self, X: torch.Tensor, subject_idxs: torch.Tensor) -> torch.Tensor:
+        X = self.blocks(X)
+        X = X.transpose(1, 2)  # Change shape from (b, c, t) to (b, t, c)
+        
+        X += self.position_embedding[:, :X.size(1), :]
+        
+        X = X.permute(1, 0, 2)  # Transformer expects shape (t, b, hid_dim)
+        X = self.transformer_encoder(X)
+        X = X.permute(1, 0, 2)  # Back to shape (b, t, hid_dim)
+        
+        X = X.transpose(1, 2)  # Change shape back from (b, t, hid_dim) to (b, hid_dim, t) for pooling
+        X = self.batchnorm(X)  # Apply batch normalization
+        
+        subject_emb = self.subject_embedding(subject_idxs)
+        subject_emb = subject_emb.unsqueeze(-1).expand(-1, -1, X.shape[-1])  # Expand embeddings to match X's dimensions
+        X = torch.cat([X, subject_emb], dim=1)  # Concatenate along the channel dimension
+        
+        return self.head(X)
+
 class ConvBlock(nn.Module):
     def __init__(
         self,
         in_dim,
         out_dim,
-        kernel_size: int = 3,
-        p_drop: float = 0.1,
+        kernel_size: int = 5,
+        p_drop: float = 0.2,
     ) -> None:
         super().__init__()
         
@@ -37,67 +98,5 @@ class ConvBlock(nn.Module):
 
         return self.dropout(X)
 
-class BasicConvClassifier8(nn.Module):
-    def __init__(
-        self,
-        num_classes: int,
-        seq_len: int,
-        in_channels: int,
-        hid_dim: int = 128,
-        num_heads: int = 8,
-        num_layers: int = 12,  # トランスフォーマーレイヤ数を増加
-        ff_dim: int = 512,  # フィードフォワード層の次元
-        dropout: float = 0.1,
-        num_subjects: int = 4,
-        subject_emb_dim: int = 32
-    ) -> None:
-        super().__init__()
-
-        self.conv_blocks = nn.Sequential(
-            ConvBlock(in_channels, hid_dim),
-            ConvBlock(hid_dim, hid_dim)
-        )
-
-        self.embedding = nn.Linear(hid_dim, hid_dim)
-        
-        self.subject_embedding = nn.Embedding(num_subjects, subject_emb_dim)
-        
-        self.position_embedding = nn.Parameter(torch.randn(1, seq_len, hid_dim))
-        
-        transformer_layer = nn.TransformerEncoderLayer(
-            d_model=hid_dim, 
-            nhead=num_heads, 
-            dim_feedforward=ff_dim, 
-            dropout=dropout
-        )
-        self.transformer_encoder = nn.TransformerEncoder(transformer_layer, num_layers=num_layers)
-        
-        self.head = nn.Sequential(
-            nn.LayerNorm(hid_dim + subject_emb_dim),
-            nn.Linear(hid_dim + subject_emb_dim, 512),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(512, num_classes),
-        )
-
-    def forward(self, X: torch.Tensor, subject_idxs: torch.Tensor) -> torch.Tensor:
-        X = self.conv_blocks(X)
-        X = X.transpose(1, 2)  # Change shape from (b, c, t) to (b, t, c)
-        X = self.embedding(X)  # Shape: (b, t, hid_dim)
-        b, t, _ = X.shape
-        
-        X += self.position_embedding[:, :t, :]
-        
-        X = X.permute(1, 0, 2)  # Transformer expects shape (t, b, hid_dim)
-        X = self.transformer_encoder(X)
-        X = X.permute(1, 0, 2)  # Back to shape (b, t, hid_dim)
-        
-        X = X.mean(dim=1)  # Global average pooling
-        
-        subject_emb = self.subject_embedding(subject_idxs)  # Shape: (b, subject_emb_dim)
-        X = torch.cat([X, subject_emb], dim=-1)  # Concatenate along the feature dimension
-        
-        return self.head(X)
-
 # Usage example
-model = BasicConvClassifier8(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_heads=8, num_layers=12, ff_dim=512)
+model = BasicConvClassifier8(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_heads=8, num_layers=4, num_blocks=4, kernel_size=5)
