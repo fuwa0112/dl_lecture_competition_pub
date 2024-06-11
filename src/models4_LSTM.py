@@ -14,7 +14,8 @@ class BasicConvClassifier4(nn.Module):
         num_blocks: int = 4,
         kernel_size: int = 5,
         num_subjects: int = 4,  # 被験者数を指定
-        subject_emb_dim: int = 32  # 被験者の埋め込み次元を指定
+        subject_emb_dim: int = 32,  # 被験者の埋め込み次元を指定
+        dropout_prob: float = 0.5  # 最後のドロップアウトレイヤーの確率
     ) -> None:
         super().__init__()
 
@@ -27,7 +28,11 @@ class BasicConvClassifier4(nn.Module):
 
         self.subject_embedding = nn.Embedding(num_subjects, subject_emb_dim)
         
+        self.attention = AttentionLayer(lstm_dim * 2)
+
         self.batchnorm = nn.BatchNorm1d(lstm_dim * 2)
+
+        self.dropout = nn.Dropout(dropout_prob)
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool1d(1),
@@ -39,6 +44,7 @@ class BasicConvClassifier4(nn.Module):
         X = self.blocks(X)
         X = X.transpose(1, 2)  # Change shape from (b, c, t) to (b, t, c) for LSTM
         X, _ = self.lstm(X)
+        X = self.attention(X)
         X = X.transpose(1, 2)  # Change shape back from (b, t, c) to (b, c, t) for pooling
         X = self.batchnorm(X)  # Apply batch normalization
         
@@ -46,6 +52,7 @@ class BasicConvClassifier4(nn.Module):
         subject_emb = subject_emb.unsqueeze(-1).expand(-1, -1, X.shape[-1])  # Expand embeddings to match X's dimensions
         X = torch.cat([X, subject_emb], dim=1)  # Concatenate along the channel dimension
         
+        X = self.dropout(X)  # Apply dropout before the final classification
         return self.head(X)
 
 class ConvBlock(nn.Module):
@@ -81,6 +88,16 @@ class ConvBlock(nn.Module):
         X = F.gelu(self.batchnorm1(X))
 
         return self.dropout(X)
+
+class AttentionLayer(nn.Module):
+    def __init__(self, lstm_dim):
+        super().__init__()
+        self.attention = nn.Linear(lstm_dim, 1)
+
+    def forward(self, X):
+        weights = torch.softmax(self.attention(X), dim=1)
+        X = torch.sum(weights * X, dim=1)
+        return X.unsqueeze(1)
 
 # Usage example
 model = BasicConvClassifier4(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, lstm_dim=512, num_blocks=6, kernel_size=5)
