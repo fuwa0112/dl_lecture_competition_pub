@@ -13,7 +13,8 @@ class BasicConvClassifier3(nn.Module):
         num_blocks: int = 4,
         kernel_size: int = 5,
         num_subjects: int = 4,  # 被験者数を指定
-        subject_emb_dim: int = 32  # 被験者の埋め込み次元を指定
+        subject_emb_dim: int = 32,  # 被験者の埋め込み次元を指定
+        dropout_prob: float = 0.5  # 最後のドロップアウトレイヤーの確率
     ) -> None:
         super().__init__()
 
@@ -25,6 +26,8 @@ class BasicConvClassifier3(nn.Module):
         self.subject_embedding = nn.Embedding(num_subjects, subject_emb_dim)
         
         self.batchnorm = nn.BatchNorm1d(hid_dim)
+
+        self.dropout = nn.Dropout(dropout_prob)
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool1d(1),
@@ -40,6 +43,7 @@ class BasicConvClassifier3(nn.Module):
         subject_emb = subject_emb.unsqueeze(-1).expand(-1, -1, X.shape[-1])  # Expand embeddings to match X's dimensions
         X = torch.cat([X, subject_emb], dim=1)  # Concatenate along the channel dimension
         
+        X = self.dropout(X)  # Apply dropout before the final classification
         return self.head(X)
 
 class ConvBlock(nn.Module):

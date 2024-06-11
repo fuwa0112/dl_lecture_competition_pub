@@ -9,8 +9,8 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 
-from src.datasets_preprocess import ThingsMEGDataset
-#from src.datasets import ThingsMEGDataset
+#from src.datasets_preprocess import ThingsMEGDataset
+from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
 from src.models2_layer_increase import BasicConvClassifier2
 from src.models3_subject import BasicConvClassifier3
@@ -55,8 +55,8 @@ def run(args: DictConfig):
     # ------------------
     #     Optimizer
     # ------------------
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
     # ------------------
     #   Start training
     # ------------------  
