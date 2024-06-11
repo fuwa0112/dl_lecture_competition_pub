@@ -14,14 +14,13 @@ class BasicConvClassifier3(nn.Module):
         kernel_size: int = 5,
         num_subjects: int = 4,
         subject_emb_dim: int = 32,
-        num_transformer_layers: int = 2,
-        nhead: int = 8,
-        dropout_prob: float = 0.7
+        dropout_prob: float = 0.5,
+        weight_decay: float = 1e-5
     ) -> None:
         super().__init__()
 
         self.blocks = nn.Sequential(*[
-            ConvBlock(in_channels if i == 0 else hid_dim, hid_dim, kernel_size=kernel_size)
+            ConvBlock(in_channels if i == 0 else hid_dim, hid_dim, kernel_size=kernel_size, p_drop=dropout_prob)
             for i in range(num_blocks)
         ])
 
@@ -29,15 +28,6 @@ class BasicConvClassifier3(nn.Module):
         
         self.batchnorm = nn.BatchNorm1d(hid_dim)
         self.layernorm = nn.LayerNorm(hid_dim + subject_emb_dim)
-
-        self.transformer_encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(
-                d_model=hid_dim + subject_emb_dim,
-                nhead=nhead,
-                dropout=dropout_prob
-            ),
-            num_layers=num_transformer_layers
-        )
 
         self.dropout = nn.Dropout(dropout_prob)
 
@@ -55,12 +45,8 @@ class BasicConvClassifier3(nn.Module):
         subject_emb = subject_emb.unsqueeze(-1).expand(-1, -1, X.shape[-1])
         X = torch.cat([X, subject_emb], dim=1)
         
-        X = self.layernorm(X.permute(0, 2, 1))
-        X = self.transformer_encoder(X)
-        X = self.dropout(X.permute(1, 0, 2)).permute(1, 0, 2)
-
-        # Flatten the sequence dimension and pass through the head
-        X = X.mean(dim=2)  # Or use X.max(dim=2)[0] for max pooling
+        X = self.layernorm(X.permute(0, 2, 1)).permute(0, 2, 1)
+        X = self.dropout(X)
         return self.head(X)
 
 class ConvBlock(nn.Module):
@@ -69,7 +55,7 @@ class ConvBlock(nn.Module):
         in_dim,
         out_dim,
         kernel_size: int = 3,
-        p_drop: float = 0.2,
+        p_drop: float = 0.5,
     ) -> None:
         super().__init__()
         
@@ -81,6 +67,8 @@ class ConvBlock(nn.Module):
         
         self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
         self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
+        self.layernorm0 = nn.LayerNorm(out_dim)
+        self.layernorm1 = nn.LayerNorm(out_dim)
 
         self.dropout = nn.Dropout(p_drop)
 
@@ -91,20 +79,13 @@ class ConvBlock(nn.Module):
             X = self.conv0(X)
 
         X = F.gelu(self.batchnorm0(X))
+        X = self.layernorm0(X.permute(0, 2, 1)).permute(0, 2, 1)
 
         X = self.conv1(X) + X  # skip connection
         X = F.gelu(self.batchnorm1(X))
+        X = self.layernorm1(X.permute(0, 2, 1)).permute(0, 2, 1)
 
         return self.dropout(X)
 
 # Usage example
-model = BasicConvClassifier3(
-    num_classes=10,
-    seq_len=100,
-    in_channels=64,
-    hid_dim=256,
-    num_blocks=6,
-    kernel_size=5,
-    num_transformer_layers=2,
-    nhead=8
-)
+model = BasicConvClassifier3(num_classes=10, seq_len=100, in_channels=64, hid_dim=128, num_blocks=4, kernel_size=5, dropout_prob=0.5)
