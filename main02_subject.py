@@ -13,8 +13,8 @@ from tqdm import tqdm
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
 from src.models2_layer_increase import BasicConvClassifier2
-from src.models3_LSTM import BasicConvClassifier3
-from src.models4_subject import BasicConvClassifier4
+from src.models3_subject import BasicConvClassifier3
+from src.models4_LSTM import BasicConvClassifier4
 from src.utils import set_seed
 
 

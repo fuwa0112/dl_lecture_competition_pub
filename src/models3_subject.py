@@ -10,9 +10,10 @@ class BasicConvClassifier3(nn.Module):
         seq_len: int,
         in_channels: int,
         hid_dim: int = 128,
-        lstm_dim: int = 256,
         num_blocks: int = 4,
-        kernel_size: int = 5
+        kernel_size: int = 5,
+        num_subjects: int = 4,  # 被験者数を指定
+        subject_emb_dim: int = 32  # 被験者の埋め込み次元を指定
     ) -> None:
         super().__init__()
 
@@ -21,31 +22,32 @@ class BasicConvClassifier3(nn.Module):
             for i in range(num_blocks)
         ])
 
-        self.lstm = nn.LSTM(input_size=hid_dim, hidden_size=lstm_dim, batch_first=True, bidirectional=True)
-
-        self.batchnorm = nn.BatchNorm1d(lstm_dim * 2)
+        self.subject_embedding = nn.Embedding(num_subjects, subject_emb_dim)
+        
+        self.batchnorm = nn.BatchNorm1d(hid_dim)
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool1d(1),
             Rearrange("b d 1 -> b d"),
-            nn.Linear(lstm_dim * 2, num_classes),
+            nn.Linear(hid_dim + subject_emb_dim, num_classes),
         )
 
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
+    def forward(self, X: torch.Tensor, subject_idxs: torch.Tensor) -> torch.Tensor:
         X = self.blocks(X)
-        X = X.transpose(1, 2)  # Change shape from (b, c, t) to (b, t, c) for LSTM
-        X, _ = self.lstm(X)
-        X = X.transpose(1, 2)  # Change shape back from (b, t, c) to (b, c, t) for pooling
         X = self.batchnorm(X)  # Apply batch normalization
+        
+        subject_emb = self.subject_embedding(subject_idxs)
+        subject_emb = subject_emb.unsqueeze(-1).expand(-1, -1, X.shape[-1])  # Expand embeddings to match X's dimensions
+        X = torch.cat([X, subject_emb], dim=1)  # Concatenate along the channel dimension
+        
         return self.head(X)
-
 
 class ConvBlock(nn.Module):
     def __init__(
         self,
         in_dim,
         out_dim,
-        kernel_size: int = 3,
+        kernel_size: int = 5,
         p_drop: float = 0.2,
     ) -> None:
         super().__init__()
@@ -75,4 +77,4 @@ class ConvBlock(nn.Module):
         return self.dropout(X)
 
 # Usage example
-model = BasicConvClassifier3(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, lstm_dim=512, num_blocks=6, kernel_size=5)
+model = BasicConvClassifier3(num_classes=10, seq_len=100, in_channels=64, hid_dim=256, num_blocks=6, kernel_size=5)
