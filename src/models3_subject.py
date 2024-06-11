@@ -14,7 +14,7 @@ class BasicConvClassifier3(nn.Module):
         kernel_size: int = 5,
         num_subjects: int = 4,
         subject_emb_dim: int = 32,
-        dropout_prob: float = 0.5
+        dropout_prob: float = 0.7
     ) -> None:
         super().__init__()
 

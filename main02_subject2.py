@@ -1,4 +1,4 @@
-import os, sys
+import os
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 import wandb
 from termcolor import cprint
 from tqdm import tqdm
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 #from src.datasets_preprocess import ThingsMEGDataset
 from src.datasets import ThingsMEGDataset
@@ -26,6 +26,7 @@ def run(args: DictConfig):
     
     if args.use_wandb:
         wandb.init(mode="online", dir=logdir, project="MEG-classification")
+    
     # ------------------
     #    Dataloader
     # ------------------
@@ -42,7 +43,7 @@ def run(args: DictConfig):
 
     test_set = ThingsMEGDataset("test", args.data_dir)
     test_loader = torch.utils.data.DataLoader(
-        test_set,shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
+        test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
     print("test load complete")
 
@@ -50,15 +51,15 @@ def run(args: DictConfig):
     #       Model
     # ------------------
     model = BasicConvClassifier3(
-        train_set.num_classes, train_set.seq_len, train_set.num_channels
+        train_set.num_classes, train_set.seq_len, train_set.num_channels, dropout_prob=0.7
     ).to(args.device)
 
     # ------------------
     #     Optimizer
     # ------------------
-    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-5)
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
+
     # ------------------
     #   Start training
     # ------------------  
@@ -66,6 +67,9 @@ def run(args: DictConfig):
     accuracy = Accuracy(
         task="multiclass", num_classes=train_set.num_classes, top_k=10
     ).to(args.device)
+    
+    early_stopping_patience = 5
+    early_stopping_counter = 0
       
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1}/{args.epochs}")
@@ -103,11 +107,20 @@ def run(args: DictConfig):
         if args.use_wandb:
             wandb.log({"train_loss": np.mean(train_loss), "train_acc": np.mean(train_acc), "val_loss": np.mean(val_loss), "val_acc": np.mean(val_acc)})
         
-        if np.mean(val_acc) > max_val_acc:
+        mean_val_acc = np.mean(val_acc)
+        if mean_val_acc > max_val_acc:
             cprint("New best.", "cyan")
             torch.save(model.state_dict(), os.path.join(logdir, "model_best.pt"))
-            max_val_acc = np.mean(val_acc)
-            
+            max_val_acc = mean_val_acc
+            early_stopping_counter = 0
+        else:
+            early_stopping_counter += 1
+        
+        if early_stopping_counter >= early_stopping_patience:
+            cprint("Early stopping triggered.", "red")
+            break
+        
+        scheduler.step()
     
     # ----------------------------------
     #  Start evaluation with best model
@@ -126,4 +139,3 @@ def run(args: DictConfig):
 
 if __name__ == "__main__":
     run()
-

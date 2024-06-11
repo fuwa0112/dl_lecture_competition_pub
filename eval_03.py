@@ -9,12 +9,14 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 
+#from src.datasets_preprocess import ThingsMEGDataset
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
 from src.models2_layer_increase import BasicConvClassifier2
-from src.models3_LSTM import BasicConvClassifier3
-from models4_LSTM import BasicConvClassifier4
+from src.models3_subject import BasicConvClassifier3
+from src.models4_LSTM import BasicConvClassifier4
 from src.utils import set_seed
+
 
 @torch.no_grad()
 @hydra.main(version_base=None, config_path="configs", config_name="config_eval")
@@ -33,7 +35,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier4(
+    model = BasicConvClassifier3(
         test_set.num_classes, test_set.seq_len, test_set.num_channels
     ).to(args.device)
     model.load_state_dict(torch.load(args.model_path, map_location=args.device))
