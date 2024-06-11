@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 import wandb
 from termcolor import cprint
 from tqdm import tqdm
+from torch.optim.lr_scheduler import StepLR
 
 #from src.datasets_preprocess import ThingsMEGDataset
 from src.datasets import ThingsMEGDataset
@@ -56,7 +57,8 @@ def run(args: DictConfig):
     #     Optimizer
     # ------------------
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-5)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
     # ------------------
     #   Start training
     # ------------------  
