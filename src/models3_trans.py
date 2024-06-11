@@ -16,6 +16,7 @@ class BasicConvClassifier3(nn.Module):
         subject_emb_dim: int = 32,
         nhead: int = 8,
         num_layers: int = 1,
+        ff_dim: int = 512,
         dropout_prob: float = 0.5,
         weight_decay: float = 1e-5
     ) -> None:
@@ -29,30 +30,42 @@ class BasicConvClassifier3(nn.Module):
         self.subject_embedding = nn.Embedding(num_subjects, subject_emb_dim)
         
         self.batchnorm = nn.BatchNorm1d(hid_dim)
-        self.layernorm = nn.LayerNorm(hid_dim + subject_emb_dim)
-
-        self.transformer_layer = nn.TransformerEncoderLayer(d_model=hid_dim, nhead=nhead, dropout=dropout_prob)
-        self.transformer = nn.TransformerEncoder(self.transformer_layer, num_layers=num_layers)
-
-        self.dropout = nn.Dropout(dropout_prob)
-
+        
+        self.position_embedding = nn.Parameter(torch.randn(1, seq_len, hid_dim))
+        
+        transformer_layer = nn.TransformerEncoderLayer(
+            d_model=hid_dim, 
+            nhead=nhead, 
+            dim_feedforward=ff_dim, 
+            dropout=dropout_prob
+        )
+        self.transformer_encoder = nn.TransformerEncoder(transformer_layer, num_layers=num_layers)
+        
         self.head = nn.Sequential(
-            nn.AdaptiveAvgPool1d(1),
-            Rearrange("b d 1 -> b d"),
-            nn.Linear(hid_dim + subject_emb_dim, num_classes),
+            nn.LayerNorm(hid_dim + subject_emb_dim),
+            nn.Linear(hid_dim + subject_emb_dim, 512),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(512, num_classes),
         )
 
     def forward(self, X: torch.Tensor, subject_idxs: torch.Tensor) -> torch.Tensor:
         X = self.blocks(X)
         X = self.batchnorm(X)
         
-        subject_emb = self.subject_embedding(subject_idxs)
-        subject_emb = subject_emb.unsqueeze(-1).expand(-1, -1, X.shape[-1])
-        X = torch.cat([X, subject_emb], dim=1)
+        X = X.permute(0, 2, 1)  # Change shape from (b, d, t) to (b, t, d)
+        b, t, _ = X.shape
+        X += self.position_embedding[:, :t, :]
         
-        X = self.layernorm(X.permute(0, 2, 1)).permute(0, 2, 1)
-        X = self.transformer(X.permute(2, 0, 1)).permute(1, 2, 0)
-        X = self.dropout(X)
+        X = X.permute(1, 0, 2)  # Transformer expects shape (t, b, d)
+        X = self.transformer_encoder(X)
+        X = X.permute(1, 0, 2)  # Back to shape (b, t, d)
+        
+        X = X.mean(dim=1)  # Global average pooling
+        
+        subject_emb = self.subject_embedding(subject_idxs)  # Shape: (b, subject_emb_dim)
+        X = torch.cat([X, subject_emb], dim=-1)  # Concatenate along the feature dimension
+        
         return self.head(X)
 
 class ConvBlock(nn.Module):
