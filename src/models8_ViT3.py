@@ -76,7 +76,7 @@ class BasicConvClassifier8(nn.Module):
             nn.LayerNorm(hid_dim + subject_emb_dim),
             nn.Linear(hid_dim + subject_emb_dim, 512),
             nn.ReLU(),
-            nn.Dropout(0.5),
+            nn.Dropout(0.1),
             nn.Linear(512, num_classes),
         )
 
