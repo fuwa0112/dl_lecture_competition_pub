@@ -9,13 +9,14 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 
-#from src.datasets_preprocess import ThingsMEGDataset
+from src.datasets_preprocess import ThingsMEGDataset2
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
 from src.models2_layer_increase import BasicConvClassifier2
 from src.models3_LSTM import BasicConvClassifier3
 from src.models4_subject import BasicConvClassifier4
 from src.models6_ViT import BasicConvClassifier6
+from src.models7_ViT2 import BasicConvClassifier7
 from src.utils import set_seed
 
 
@@ -49,7 +50,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier6(
+    model = BasicConvClassifier7(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
 
