@@ -12,10 +12,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 #from src.datasets_preprocess import ThingsMEGDataset
 from src.datasets import ThingsMEGDataset
-from src.models import BasicConvClassifier
-from src.models2_layer_increase import BasicConvClassifier2
-from src.models3_subject_LSTM import BasicConvClassifier3
-from src.models4_LSTM import BasicConvClassifier4
+from src.model_trans import LSTMConvClassifier
 from src.utils import set_seed
 
 
@@ -50,7 +47,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier3(
+    model = LSTMConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels, dropout_prob=0.7
     ).to(args.device)
 
