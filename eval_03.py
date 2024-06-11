@@ -17,7 +17,7 @@ from src.models4_subject import BasicConvClassifier4
 from src.utils import set_seed
 
 @torch.no_grad()
-@hydra.main(version_base=None, config_path="configs", config_name="config")
+@hydra.main(version_base=None, config_path="configs", config_name="config_eval")
 def run(args: DictConfig):
     set_seed(args.seed)
     savedir = os.path.dirname(args.model_path)

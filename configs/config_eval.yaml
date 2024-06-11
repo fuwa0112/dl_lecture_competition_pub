@@ -10,5 +10,4 @@ use_wandb: False
 data_dir: data
 
 # Evaluation
-model_path: 
-#model_path: outputs/model_best.pt
+model_path: outputs/model_best.pt
