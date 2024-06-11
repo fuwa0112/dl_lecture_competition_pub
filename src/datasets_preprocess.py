@@ -25,7 +25,7 @@ def preprocess_data(data, sample_rate, new_sample_rate, low_cut, high_cut, basel
     
     return data
 
-class ThingsMEGDataset2(torch.utils.data.Dataset):
+class ThingsMEGDataset(torch.utils.data.Dataset):
     def __init__(self, split: str, data_dir: str = "data", new_sample_rate: int = 128, low_cut: float = 0.5, high_cut: float = 40.0, baseline_window: Tuple[int, int] = (0, 50)) -> None:
         super().__init__()
         
