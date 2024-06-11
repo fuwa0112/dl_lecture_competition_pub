@@ -1,3 +1,4 @@
+
 import os
 import numpy as np
 import torch
@@ -9,11 +10,14 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from transformers import CLIPModel, CLIPProcessor
+from torchvision import transforms
+from PIL import Image
 
-#from src.datasets_preprocess import ThingsMEGDataset
 from src.datasets import ThingsMEGDataset
-from src.model import LSTMConvClassifier
+from src.model_CRISP import MEGPretrainedEncoder, MEGClassifier
 from src.utils import set_seed
+
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
@@ -30,15 +34,15 @@ def run(args: DictConfig):
     loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
     print("Debug start")
         
-    train_set = ThingsMEGDataset("train", args.data_dir)
+    train_set = ThingsMEGDataset("train", args.data_dir, args.image_dir, "train_image_paths.txt")
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
     print("Train load complete")
     
-    val_set = ThingsMEGDataset("val", args.data_dir)
+    val_set = ThingsMEGDataset("val", args.data_dir, args.image_dir, "val_image_paths.txt")
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
     print("val load complete")
 
-    test_set = ThingsMEGDataset("test", args.data_dir)
+    test_set = ThingsMEGDataset("test", args.data_dir, args.image_dir, "test_image_paths.txt")
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
@@ -47,9 +51,13 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = LSTMConvClassifier(
-        train_set.num_classes, train_set.seq_len, train_set.num_channels, dropout_prob=0.7
-    ).to(args.device)
+    # CLIPモデルのビジョンエンコーダを取得
+    clip_model = CLIPModel.from_pretrained("data/clip-vit-base-patch32")
+    vision_encoder = clip_model.vision_model
+    
+    # 事前学習エンコーダを用いたモデルの作成
+    pretrained_encoder = MEGPretrainedEncoder(vision_encoder, in_channels=train_set[0][0].shape[0], hidden_dim=256)
+    model = MEGClassifier(pretrained_encoder, num_classes=train_set.num_classes).to(args.device)
 
     # ------------------
     #     Optimizer
@@ -74,8 +82,8 @@ def run(args: DictConfig):
         train_loss, train_acc, val_loss, val_acc = [], [], [], []
         
         model.train()
-        for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
-            X, y, subject_idxs = X.to(args.device), y.to(args.device), subject_idxs.to(args.device)
+        for X, y, subject_idxs, img in tqdm(train_loader, desc="Train"):
+            X, y, subject_idxs, img = X.to(args.device), y.to(args.device), subject_idxs.to(args.device), img.to(args.device)
 
             y_pred = model(X, subject_idxs)
             
@@ -90,8 +98,8 @@ def run(args: DictConfig):
             train_acc.append(acc.item())
 
         model.eval()
-        for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
-            X, y, subject_idxs = X.to(args.device), y.to(args.device), subject_idxs.to(args.device)
+        for X, y, subject_idxs, img in tqdm(val_loader, desc="Validation"):
+            X, y, subject_idxs, img = X.to(args.device), y.to(args.device), subject_idxs.to(args.device), img.to(args.device)
             
             with torch.no_grad():
                 y_pred = model(X, subject_idxs)
@@ -126,7 +134,7 @@ def run(args: DictConfig):
 
     preds = [] 
     model.eval()
-    for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
+    for X, subject_idxs, img in tqdm(test_loader, desc="Validation"):        
         preds.append(model(X.to(args.device), subject_idxs.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
